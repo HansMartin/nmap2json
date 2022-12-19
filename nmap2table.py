@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import sys
 import json
+from rich import box
 from rich.console import Console
 from rich.table import Table
 import argparse
@@ -18,15 +19,59 @@ translateSvc = {
 # Setup Table
 console = Console()
 
-table = Table(show_header=True, header_style="bold green")
-table.add_column("IP", style="dim")
-table.add_column("Host")
-table.add_column("Port")
-table.add_column("Service")
-table.add_column("Version", justify="left")
 
-def pprint_table(hostlist, iponly):
-    global table
+def getEmptyTable():
+    table = Table(show_header=True, header_style="bold green")
+    table.add_column("IP", style="dim")
+    table.add_column("Host")
+    table.add_column("Port")
+    table.add_column("Service")
+    table.add_column("Version", justify="left")
+    return table
+
+def pprint_table_md(hostlist, iponly, isAscii):
+
+    for host in hostlist:
+        if host['hostname'] != "":
+            console.print(f"# {host['ip']} ({host['hostname']})\n")
+        else:
+            console.print(f"# {host['ip']}\n")
+
+        tmpTable = getEmptyTable()
+        tmpTable.box = box.ASCII2
+
+        for port in host["ports"]:
+            if iponly:
+                print(host["ip"])
+            else:
+                if port["state"] == "open":
+                    tmpTable.add_row(
+                        host["ip"],
+                        host["hostname"],
+                        str(port["port_number"]),
+                        port["service"],
+                        port["version"]
+                    )
+
+        #console.print(table)
+        with console.capture() as capture:
+            console.print(tmpTable)
+
+        strTable = capture.get()
+        strTable = "\n".join(strTable.replace("+", "|").split("\n")[1:-2])
+
+        print(strTable)
+        print("\n")
+
+
+
+
+def pprint_table(hostlist, iponly, isAscii):
+
+    table = getEmptyTable()
+
+    if isAscii:
+        table.box = box.ASCII2
 
     for host in hostlist:
         for port in host["ports"]:
@@ -106,6 +151,8 @@ parser.add_argument('--service', dest='service', action='store',
                     help='Filter by service')
 parser.add_argument('--ip-only', '-i', dest='ip', action='store_true',
                     help='Only print the ips')
+parser.add_argument('--md', '-m', dest='md', action='store_true',
+                    help='Export as Markdown Table')
 
 
 args = parser.parse_args()
@@ -116,13 +163,20 @@ if args.file:
 else:
     hosts = json.loads(sys.stdin.read())
 
+if args.md:
+    makeAscii = True
+else:
+    makeAscii = False
+
 
 if args.port:
-    pprint_table(filter_by_port(args.port), args.ip)
+    pprint_table(filter_by_port(args.port), args.ip, makeAscii)
 elif args.version:
-    pprint_table(filter_by_version(args.version), args.ip)
+    pprint_table(filter_by_version(args.version), args.ip, makeAscii)
 elif args.service:
-    pprint_table(filter_by_service(args.service), args.ip)
+    pprint_table(filter_by_service(args.service), args.ip, makeAscii)
+elif args.md:
+    pprint_table_md(hosts, args.ip, makeAscii)
 else:
-    pprint_table(hosts, args.ip)
+    pprint_table(hosts, args.ip, makeAscii)
 
