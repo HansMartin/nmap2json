@@ -80,11 +80,15 @@ fn parse_host_field<'a>(field: &'a String) -> (String, String) {
 fn parse_ports_field(field: &str) -> Vec<Port> {
 
     let mut portlist: Vec<Port> = Vec::new();
+    
+    // In-case of an Empty Port Array
+    if field.len() == 0 {
+        return portlist;
+    }
+    
 
-    //portlist = [s.strip() for s in field.split("/,")]
     for port_field in field.split("/,") {
         let port_field: Vec<&str> = port_field.trim().split("/").collect();
-
         let tmp_port = Port {
             port_number: port_field[0].parse().unwrap(),
             state:  port_field[1].to_owned(),
