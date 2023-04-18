@@ -29,6 +29,108 @@ def getEmptyTable():
     table.add_column("Version", justify="left")
     return table
 
+
+def pprint_csv(hostlist):
+
+
+    print("No.;Host;Port;Proto;Service")
+
+
+    row_count = 0
+    for host in hostlist:
+        for port in host["ports"]:
+            if port["state"] == "open":
+                print(f"{str(row_count)};{host['ip']};{str(port['port_number'])};{port['protocol']}; {port['service'].replace('|', '/')}")
+                row_count += 1
+
+
+
+
+
+def pprint_table_dradis_services(hostlist, iponly, isAscii):
+
+    '''
+    -> Dradis output format
+    No. 	Host 	Port 	Proto 	Service
+    '''
+
+    table = Table(show_header=True, header_style="bold green")
+    table.add_column("No.", justify="left")
+    table.add_column("Host", justify="left")
+    table.add_column("Port", justify="left")
+    table.add_column("Proto", justify="left")
+    table.add_column("Service", justify="left")
+
+    table.box = box.ASCII2
+
+    row_count = 0
+    for host in hostlist:
+        for port in host["ports"]:
+            if port["state"] == "open":
+                table.add_row(
+                    str(row_count),
+                    host["ip"],
+                    str(port["port_number"]),
+                    port["protocol"],
+                    port["service"].replace("|", "/")
+                )
+
+                row_count += 1
+
+        
+    #console.print(table)
+    with console.capture() as capture:
+        console.print(table)
+
+    strTable = capture.get()
+    strTable = strTable.replace("+", "|").split("\n")[1:-2]
+    del strTable[1]
+    strTable = "\n".join(strTable)
+
+    print(strTable)
+    print("\n")
+
+def pprint_table_dradis_hosts(hostlist, iponly, isAscii):
+
+    '''
+    -> Dradis output format
+    |_. No.|_. IP|_. Hostname|_. Identified via|
+    |>. x.|TBD|TBD|TBD|
+    '''
+
+    table = Table(show_header=True, header_style="bold green")
+    table.add_column("No.", justify="left")
+    table.add_column("IP", justify="left")
+    table.add_column("Hostname", justify="left")
+    #table.add_column("Identified via", justify="left")
+
+    table.box = box.ASCII2
+
+    row_count = 0
+    for host in hostlist:
+        if host["status"] == "Up":
+            table.add_row(
+                str(row_count),
+                host["ip"],
+                host["hostname"],
+                #"nmap scan"
+            )
+
+            row_count += 1
+
+        
+    #console.print(table)
+    with console.capture() as capture:
+        console.print(table)
+
+    strTable = capture.get()
+    strTable = strTable.replace("+", "|").split("\n")[1:-2]
+    del strTable[1]
+    strTable = "\n".join(strTable)
+
+    print(strTable)
+    print("\n")
+
 def pprint_table_md(hostlist, iponly, isAscii):
 
     for host in hostlist:
@@ -153,6 +255,12 @@ parser.add_argument('--ip-only', '-i', dest='ip', action='store_true',
                     help='Only print the ips')
 parser.add_argument('--md', '-m', dest='md', action='store_true',
                     help='Export as Markdown Table')
+parser.add_argument('--dradis-hosts', '-dh', dest='dradis_host', action='store_true',
+                    help='Export as Dradis Test-Case Table')
+parser.add_argument('--dradis-services', '-ds', dest='dradis_service', action='store_true',
+                    help='Export as Dradis Test-Case Table')
+parser.add_argument('--csv',dest='csv', action='store_true',
+                    help='Export as Dradis Test-Case Table')
 
 
 args = parser.parse_args()
@@ -177,6 +285,12 @@ elif args.service:
     pprint_table(filter_by_service(args.service), args.ip, makeAscii)
 elif args.md:
     pprint_table_md(hosts, args.ip, makeAscii)
+elif args.dradis_host:
+    pprint_table_dradis_hosts(hosts, args.ip, makeAscii)
+elif args.dradis_service:
+    pprint_table_dradis_services(hosts, args.ip, makeAscii)
+elif args.csv:
+    pprint_csv(hosts)
 else:
     pprint_table(hosts, args.ip, makeAscii)
 
